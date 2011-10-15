@@ -1,37 +1,43 @@
 ## To convert State Plane to Lat/Lng (WGS 84)
 brew install postgis
 brew install gdal
-http://russbrooks.com/2010/11/25/install-postgresql-9-on-os-x
-    # NB: Out of the box, you authenticate against the DB using the same user account under which you ran brew install.
-    #initialize the DB
-    initdb /usr/local/var/postgres
-    # add startup items
-    cp /usr/local/Cellar/postgresql/9.0.4/org.postgresql.postgres.plist ~/Library/LaunchAgents
-    launchctl load -w ~/Library/LaunchAgents/org.postgresql.postgres.plist
-    #start Postgres.
-    pg_ctl -D /usr/local/var/postgres -l /usr/local/var/postgres/server.log start
+# from http://russbrooks.com/2010/11/25/install-postgresql-9-on-os-x
+# NB: Out of the box, you authenticate against the DB using the same user account under which you ran brew install.
+#initialize the DB
+initdb /usr/local/var/postgres
+# add startup items
+cp /usr/local/Cellar/postgresql/9.0.4/org.postgresql.postgres.plist ~/Library/LaunchAgents
+launchctl load -w ~/Library/LaunchAgents/org.postgresql.postgres.plist
+#start Postgres.
+pg_ctl -D /usr/local/var/postgres -l /usr/local/var/postgres/server.log start
     
-    # confirm that it works
-    psql postgres -c "select 1;"
+# confirm that it works
+psql postgres -c "select 1;"
 
-    createdb template_postgis
-    psql -d template_postgis -f /usr/local/Cellar/postgresql/9.0.4/share/postgresql/contrib/postgis-1.5/postgis.sql
-    psql -d template_postgis -f /usr/local/Cellar/postgresql/9.0.4/share/postgresql/contrib/postgis-1.5/spatial_ref_sys.sql 
-    createdb -T template_postgis nyclu
-    psql -d nyclu
+# create spatial db template
+createdb template_postgis
+psql -d template_postgis -f /usr/local/Cellar/postgresql/9.0.4/share/postgresql/contrib/postgis-1.5/postgis.sql
+psql -d template_postgis -f /usr/local/Cellar/postgresql/9.0.4/share/postgresql/contrib/postgis-1.5/spatial_ref_sys.sql 
 
 
-    for every column in header, make a text entry
-    have a text file
-    run that as a command in psql
-   
-    ogr2ogr -f PGDump 2010.sql 2010.csv 
+# create DB based on template
+createdb -T template_postgis nyclu
+psql -d nyclu
 
-    # create a geometry column
+# for every column in header, make a text entry
+# run that as a command in psql
+cat CREATE_TABLE.txt | pbcopy
+# inside psql, paste    
 
-    
+# create sql dump
+ogr2ogr -f PGDump 2010.sql 2010.csv 
+
+# create a geometry column
+SELECT AddGeometryColumn ('public','sqf_2010','the_geom',4326,'POINT',2);
     
 # populate geom
 SELECT  ST_Transform(ST_GeomFromText('POINT('|| xcoord ||' ' || ycoord || ')', 2263),3857) as the_geom_webmercator from sqf WHERE coalesce(trim(xcoord),'')  <> '' AND coalesce(trim(ycoord),'')  <> '' 
 
 # create index
+CREATE INDEX the_geom_idx ON sqf_2010 USING GIST ( the_geom );
+
