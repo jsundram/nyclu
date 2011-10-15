@@ -1,4 +1,5 @@
 ## To convert State Plane to Lat/Lng (WGS 84)
+## could also use: http://gitorious.org/tlevine/noaa_post_project/blobs/master/noaa.py but it hits the web
 brew install postgis
 brew install gdal
 # from http://russbrooks.com/2010/11/25/install-postgresql-9-on-os-x
@@ -30,14 +31,29 @@ cat CREATE_TABLE.txt | pbcopy
 # inside psql, paste    
 
 # create sql dump
-ogr2ogr -f PGDump 2010.sql 2010.csv 
+ogr2ogr -f PGDump sqf_2010.sql 2010.csv 
+
+# import data
+psql -d nyclu -f sqf_2010.sql
 
 # create a geometry column
 SELECT AddGeometryColumn ('public','sqf_2010','the_geom',4326,'POINT',2);
     
 # populate geom
-SELECT  ST_Transform(ST_GeomFromText('POINT('|| xcoord ||' ' || ycoord || ')', 2263),3857) as the_geom_webmercator from sqf WHERE coalesce(trim(xcoord),'')  <> '' AND coalesce(trim(ycoord),'')  <> '' 
+UPDATE "sqf_2010" SET the_geom = ST_Transform(ST_GeomFromText('POINT('|| xcoord ||' ' || ycoord || ')', 2263), 4326) WHERE coalesce(trim(xcoord),'')  <> '' AND coalesce(trim(ycoord),'')  <> '';
 
 # create index
-CREATE INDEX the_geom_idx ON sqf_2010 USING GIST ( the_geom );
+CREATE INDEX idx_2010_the_geom ON "2010" USING GIST ( the_geom );
+
+# create new table with the stuff we want in it
+create table state_plane_to_latlng as
+SELECT DISTINCT xcoord, ycoord
+, ST_x(the_geom) as longitude
+, ST_y(the_geom) as latitude
+from "sqf_2010"
+ORDER BY xcoord, ycoord;
+
+# export table to csv
+COPY state_plane_to_latlng TO '/state_plane_to_latlng.csv';
+
 
