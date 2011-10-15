@@ -54,6 +54,8 @@ from "sqf_2010"
 ORDER BY xcoord, ycoord;
 
 # export table to csv
-COPY state_plane_to_latlng TO '/state_plane_to_latlng.csv';
+COPY state_plane_to_latlng TO '/state_plane_to_latlng.csv' CSV HEADER;
+
+# for some reason there's an empty line after the header
 
 
